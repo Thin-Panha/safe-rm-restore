@@ -61,6 +61,17 @@ restore foldername
 
 ---
 
+## 🙋 Need Help or Suggest Changes?
+
+If you encounter any problems using this project or want to suggest improvements, feel free to [open an issue](https://github.com/Thin-Panha/safe-rm-restore/issues) or contact me directly.
+
+Please **do not push directly** — this repository only accepts changes through pull requests.
+
+🔒 Only the project owner can push to this repository. Others may contribute via pull requests.
+
+
+---
+
 ## 👤 Creator
 
 This project was created by:
