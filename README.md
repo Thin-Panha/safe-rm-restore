@@ -76,7 +76,11 @@ Please **do not push directly** — this repository only accepts changes through
 
 This project was created by:
 
-**Panha Thin**  
+**Name: Panha Thin**  
+**ID: IDTB100329**  
+**​​​CADT_Gen_10**  
+**Cyber: G2**  
+
 📍 GitHub: [@Thin-Panha](https://github.com/Thin-Panha)  
 
 
