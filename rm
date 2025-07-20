@@ -1,0 +1,65 @@
+#!/bin/bash
+
+TRASH_DIR="/tmp/trash"
+TEXT_LOG="$TRASH_DIR/trash.log"
+JSON_LOG="$TRASH_DIR/trash.log.json"
+TIMESTAMP=$(date +%Y-%m-%d_%H:%M:%S)
+usage() {
+  echo "Usage: rm [-r] file1 [file2 ...]"
+  exit 1
+}
+
+# Create trash directory and logs if not exist
+mkdir -p "$TRASH_DIR"
+touch "$TEXT_LOG" "$JSON_LOG"
+
+# Check for empty input
+if [ $# -eq 0 ]; then usage; fi
+
+RECURSIVE=false
+FILES=()
+
+# Parse options
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -r) RECURSIVE=true ;;
+    -*) echo "Unsupported option: $1"; usage ;;
+    *) FILES+=("$1") ;;
+  esac
+  shift
+done
+
+for FILE in "${FILES[@]}"; do
+  if [ ! -e "$FILE" ]; then
+    echo "Error: $FILE does not exist."
+    continue
+  fi
+
+  if [ -d "$FILE" ] && [ "$RECURSIVE" != true ]; then
+    echo "Error: $FILE is a directory. Use -r to delete directories."
+    continue
+  fi
+  BASENAME=$(basename "$FILE")
+  if [ -d "$FILE" ]; then
+    NEWNAME="${BASENAME}_$TIMESTAMP"
+  else
+    EXT="${BASENAME##*.}"
+    NAME="${BASENAME%.*}"
+    if [[ "$NAME" == "$EXT" ]]; then  # no extension
+      NEWNAME="${BASENAME}_$TIMESTAMP"
+    else
+      NEWNAME="${NAME}_$TIMESTAMP.$EXT"
+    fi
+  fi
+
+  DEST="$TRASH_DIR/$NEWNAME"
+  ABS_PATH=$(realpath "$FILE")
+
+  mv "$FILE" "$DEST"
+
+  # Plain log
+  echo "$ABS_PATH -> $DEST @ $TIMESTAMP" >> "$TEXT_LOG"
+
+  # JSON log
+  echo "{\"action\":\"delete\",\"filename\":\"$BASENAME\",\"original_path\":\"$ABS_PATH\",\"deleted_path\":\"$DEST\",\"timestamp\":\"$TIMESTAMP\"}" >> "$JSON_LOG"
+done

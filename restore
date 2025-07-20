@@ -1,0 +1,112 @@
+#!/bin/bash
+
+TRASH_DIR="/tmp/trash"
+LOG_FILE="$TRASH_DIR/trash.log"
+JSON_LOG="$TRASH_DIR/trash.log.json"
+TIMESTAMP=$(date +%Y-%m-%d_%H:%M:%S)
+if [ $# -eq 0 ]; then
+  echo "Usage: restore filename_or_partial"
+  exit 1
+fi
+
+PATTERN="$1"
+
+# Find matching full lines from the log
+mapfile -t MATCHES < <(awk -v pattern="$PATTERN" '
+{
+  split($1, parts, "/")
+  fname = parts[length(parts)]
+  # If the filename exactly matches the pattern (no partial match)
+  if (fname == pattern) print
+}' "$LOG_FILE")
+
+
+
+if [ ${#MATCHES[@]} -eq 0 ]; then
+  echo "No matching file found in log."
+  exit 1
+fi
+
+# Show choices if multiple matches
+if [ ${#MATCHES[@]} -gt 1 ]; then
+  echo "Multiple matches found:"
+  for i in "${!MATCHES[@]}"; do
+    echo "[$((i+1))] ${MATCHES[$i]}"
+  done
+
+  read -p "Select number to restore: " SELECTED
+  if ! [[ "$SELECTED" =~ ^[0-9]+$ ]] || [ "$SELECTED" -lt 1 ] || [ "$SELECTED" -gt ${#MATCHES[@]} ]; then
+    echo "Invalid selection."
+    exit 1
+  fi
+
+  LINE="${MATCHES[$((SELECTED-1))]}"
+else
+  LINE="${MATCHES[0]}"
+fi
+
+ORIG_PATH=$(echo "$LINE" | cut -d' ' -f1)
+TRASH_PATH=$(echo "$LINE" | cut -d' ' -f3)
+
+if [ ! -e "$TRASH_PATH" ]; then
+  echo "Error: File not found in trash."
+  exit 1
+fi
+
+# Ensure the destination directory exists
+DEST_DIR=$(dirname "$ORIG_PATH")
+mkdir -p "$DEST_DIR"
+
+# Handle conflicts with user choice
+if [ -e "$ORIG_PATH" ]; then
+  echo "⚠️ File already exists: $ORIG_PATH"
+  echo "Choose an option:"
+  echo "[1] Cancel restoring"
+  echo "[2] Rename restored file (append: _restored_TIMESTAMP)"
+  echo "[3] Overwrite existing file"
+
+  read -p "Your choice: " CHOICE
+
+  case $CHOICE in
+    1)
+      echo "Skipped restoring."
+      exit 0
+      ;;
+    2)
+      FILENAME=$(basename -- "$ORIG_PATH")
+      if [ -d "$TRASH_PATH" ]; then
+        NEWNAME="${FILENAME}_restored_$(date +%Y-%m-%d_%H:%M:%S)"
+      else
+        EXT="${FILENAME##*.}"
+        NAME="${FILENAME%.*}"
+        if [ "$NAME" = "$EXT" ]; then  # No extension (e.g., file named "o")
+          NEWNAME="${FILENAME}_restored_$(date +%Y-%m-%d_%H:%M:%S)"
+        else
+          NEWNAME="${NAME}_restored_$(date +%Y-%m-%d_%H:%M:%S).${EXT}"
+        fi
+      fi
+      ORIG_PATH="$(dirname "$ORIG_PATH")/$NEWNAME"
+      ;;
+    3)
+      if [ -d "$ORIG_PATH" ]; then
+        rm -r "$ORIG_PATH"
+      else
+        rm "$ORIG_PATH"
+      fi
+      ;;
+    *)
+      echo "Invalid choice."
+      exit 1
+      ;;
+  esac
+fi
+
+mv "$TRASH_PATH" "$ORIG_PATH"
+echo "Restored to: $ORIG_PATH"
+
+# Remove restored entry from text log
+sed -i "\|$LINE|d" "$LOG_FILE"
+
+# Add restore action to JSON log
+FILENAME=$(basename -- "$ORIG_PATH")
+echo "{\"action\":\"restore\",\"filename\":\"$FILENAME\",\"restored_path\":\"$ORIG_PATH\",\"from_trash\":\"$TRASH_PATH\",\"timestamp\":\"$TIMESTAMP\"}" >> "$JSON_LOG"
