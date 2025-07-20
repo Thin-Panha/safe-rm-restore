@@ -57,8 +57,16 @@ restore filename.txt
 restore foldername
 ```
 
-# 📄 [Click to download or view the guide](./How_to_use.pdf)
+# 📄 [View the usage guide (PDF)](./How_to_use_(rm)&(restore).pdf)
 
+---
+
+## 👤 Creator
+
+This project was created by:
+
+**Panha Thin**  
+📍 GitHub: [@Thin-Panha](https://github.com/Thin-Panha)  
 
 
 
